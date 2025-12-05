@@ -1,0 +1,28 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow  
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: covid_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  airflow:
+    image: apache/airflow:2.7.3
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/covid_db
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./dbt:/opt/airflow/dbt
+    command: >
+      bash -c "airflow db upgrade &&
+               airflow users create --username admin --firstname Admin --lastname User --role Admin --email
