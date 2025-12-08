@@ -1,0 +1,13 @@
+#env variables
+.env
+
+#logs
+logs/
+**/logs/
+*.log
+
+#data volumes
+data/
+dbt/target/
+dbt/dbt_packages/
+
