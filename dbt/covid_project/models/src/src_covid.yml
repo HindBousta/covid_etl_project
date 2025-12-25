@@ -1,0 +1,34 @@
+version: 2
+
+sources: 
+  - name: raw
+    schema: raw
+    description: "Source data for COVID-19 statistics."
+    tables:
+      - name: covid_data
+        description: "Raw COVID-19 data sourced from public health databases."
+        columns:
+          - name: date
+            description: "The date of the recorded data."
+            tests:
+              - not_null
+              - unique
+          - name: states
+            tests:
+              - not_null
+          - name: positive
+            description: "The number of positive COVID-19 cases."
+            tests:
+              - not_null
+          - name: negative
+            description: "The number of negative COVID-19 cases."
+            tests:
+              - not_null
+          - name: hospitalizedCurrently
+            description: "The number of hospitalized COVID-19 patients."
+            tests:
+              - not_null
+          - name: death
+            description: "The number of deaths due to COVID-19."
+            tests:
+              - not_null
