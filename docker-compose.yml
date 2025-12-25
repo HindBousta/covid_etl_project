@@ -10,9 +10,13 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
   airflow-webserver:
-    image: apache/airflow:2.7.3-python3.10
+    build: 
+      context: .
+      dockerfile: docker/airflow/Dockerfile    
     depends_on:
       - postgres
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
@@ -29,10 +33,14 @@ services:
               airflow users create --username ${AIRFLOW_ADMIN_USERNAME} --password ${AIRFLOW_ADMIN_PASSWORD} --firstname ${AIRFLOW_ADMIN_FIRSTNAME} --lastname ${AIRFLOW_ADMIN_LASTNAME} --role Admin --email ${AIRFLOW_ADMIN_EMAIL} &&
               airflow webserver"
   airflow-scheduler:
-    image: apache/airflow:2.7.3-python3.10
+    build:
+      context: .
+      dockerfile: docker/airflow/Dockerfile
     depends_on:
       - postgres
       - airflow-webserver
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
