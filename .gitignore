@@ -11,3 +11,5 @@ data/
 dbt/target/
 dbt/dbt_packages/
 
+*.pyc
+__pycache__/
