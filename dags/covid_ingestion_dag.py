@@ -11,7 +11,7 @@ import os
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'retries': 1,
+    'retries': 2,
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,
     'email': ['hindbousta6@gmail.com']
@@ -26,7 +26,7 @@ RAW_FOLDER = '/opt/airflow/data/raw/'
     catchup=False,
     tags=['covid', 'etl']
 )
-def covid_etl():
+def covid_ingestion():
 
     # ------------------------------
     # 1 Extract Task
@@ -54,7 +54,7 @@ def covid_etl():
         return {"path": output_path, "rows": len(df)}
     
     # ------------------------------
-    # 2 Load Task
+    # 2 Validate Task
     # ------------------------------
     @task()
     def validate_data(metadata: dict):
@@ -95,43 +95,31 @@ def covid_etl():
         cur.execute("TRUNCATE TABLE raw.covid_data;")
         conn.commit()
 
-        # Insert rows
-        for _, row in df.iterrows():
-            cur.execute(
-                """
-                INSERT INTO raw.covid_data(date, states, positive, negative, hospitalizedCurrently, death)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (row['date'], row.get('states'), row.get('positive'), row.get('negative'),
-                 row.get('hospitalizedCurrently'), row.get('death'))
-            )
+        # Bulk insert data
+        df = df[['date', 'states', 'positive', 'negative', 'hospitalizedCurrently', 'death']]
+        records = list(df.itertuples(index=False, name=None))
+        execute_values(
+            cur,
+            """
+            INSERT INTO raw.covid_data(date, states, positive, negative, hospitalizedCurrently, death)
+            VALUES %s
+            """,
+            records
+        )
         conn.commit()
         cur.close()
         conn.close()
 
-        return "Loaded successfully"
+        return f"Loaded {len(df)} rows successfully"
 
     # ------------------------------
-    # 4 Transform Task (dbt)
-    # ------------------------------
-    run_dbt_transform = BashOperator(
-    task_id="run_dbt_transform",
-    bash_command="""
-    cd /opt/airflow/dbt/covid_project &&
-    dbt deps &&
-    dbt run &&
-    dbt test
-    """
-    )
-   # ------------------------------
     # Task dependencies
     # ------------------------------
     metadata = extract_covid_data()
     validated_data = validate_data(metadata)
     load_task = load_covid_data(validated_data)
-    load_task >> run_dbt_transform
 
 # Instantiate DAG
-covid_etl()
+covid_ingestion()
 
 
