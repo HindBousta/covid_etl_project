@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import psycopg2
+from psycopg2.extras import execute_values
 import os
 
 # DAG default args
@@ -11,12 +12,16 @@ default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
     'retries': 1,
-    'retry_delay': timedelta(minutes=5)
+    'retry_delay': timedelta(minutes=5),
+    'email_on_failure': True,
+    'email': ['hindbousta6@gmail.com']
 }
+
+RAW_FOLDER = '/opt/airflow/data/raw/'
 
 @dag(
     default_args=default_args,
-    start_date=datetime(2023, 1, 1),
+    start_date=datetime(2025, 1, 1),
     schedule_interval='@daily',
     catchup=False,
     tags=['covid', 'etl']
@@ -29,26 +34,36 @@ def covid_etl():
     @task
     def extract_covid_data():
         #Create local folders:
-        raw_folder = '/opt/airflow/data/raw/'
-        os.makedirs(raw_folder, exist_ok=True)
+        os.makedirs(RAW_FOLDER, exist_ok=True)
         
         #Download COVID-19 data from a public API:
         url = 'https://api.covidtracking.com/v1/us/daily.json'
         response = requests.get(url)
         data = response.json()
+        if not data:
+            raise ValueError("No data fetched from COVID API")
 
         #Convert to DataFrame and save as CSV:
         df = pd.DataFrame(data)
         df['date'] = pd.to_datetime(df['date'], format='%Y%m%d')
 
         #Save as CSV
-        output_path = os.path.join(raw_folder, 'us_daily_covid.csv')
+        output_path = os.path.join(RAW_FOLDER, 'us_daily_covid.csv')
         df.to_csv(output_path, index=False)
 
-        return output_path
+        return {"path": output_path, "rows": len(df)}
     
-   # ------------------------------
+    # ------------------------------
     # 2 Load Task
+    # ------------------------------
+    @task()
+    def validate_data(metadata: dict):
+        if metadata["rows"] == 0:
+            raise ValueError("Extracted dataset is empty")
+        return metadata["path"]
+
+    # ------------------------------
+    # 3 Load Task
     # ------------------------------
     @task()
     def load_covid_data(csv_path: str):
@@ -97,7 +112,7 @@ def covid_etl():
         return "Loaded successfully"
 
     # ------------------------------
-    # 3 Transform Task (dbt)
+    # 4 Transform Task (dbt)
     # ------------------------------
     run_dbt_transform = BashOperator(
     task_id="run_dbt_transform",
@@ -111,8 +126,9 @@ def covid_etl():
    # ------------------------------
     # Task dependencies
     # ------------------------------
-    csv_file = extract_covid_data()
-    load_task = load_covid_data(csv_file)
+    metadata = extract_covid_data()
+    validated_data = validate_data(metadata)
+    load_task = load_covid_data(validated_data)
     load_task >> run_dbt_transform
 
 # Instantiate DAG
