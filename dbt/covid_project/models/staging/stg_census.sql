@@ -1,7 +1,7 @@
 {{ config(materialized='table') }}
 
 SELECT
-    state_fips,
+    lpad(state_fips::text, 2, '0') as state_fips,
     state_name,
     total_population::numeric,
     median_age::numeric,

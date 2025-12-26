@@ -26,7 +26,7 @@ LEFT JOIN
 SELECT * FROM joined
 
 {% if is_incremental() %}
-WHERE c.case_date >= (
+WHERE joined.date_key >= (
   SELECT max(date_key) - interval '1 day'
   FROM {{ this }}
 )
