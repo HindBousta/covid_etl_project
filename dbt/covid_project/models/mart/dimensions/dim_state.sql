@@ -1,9 +1,8 @@
-{{
-    config(
-        materialized='table'
-    )
-}}
+{{ config(materialized='table') }}
 
-SELECT DISTINCT state_code
-FROM {{ ref('stg_covid_cases') }}
-WHERE state_code IS NOT NULL
+SELECT DISTINCT
+    state_fips,
+    state_name,
+    total_population,
+    median_age
+FROM {{ ref('stg_census') }}

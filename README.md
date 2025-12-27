@@ -29,25 +29,29 @@ The architecture follows modern analytics engineering best practices:
 ```
         ┌────────────┐
         │   Source   │
-        │ COVID Data │
+        │ COVID Data |
+        | Census Data│
         └─────┬──────┘
               │
               ▼
      ┌──────────────────┐
      │ Raw Schema (raw) │
-     │  covid_data      │
+     │  covid_data      |
+     |  census_data     │
      └─────┬────────────┘
            │ dbt source
            ▼
  ┌──────────────────────┐
  │ Staging Schema       │
- │ stg_covid_cases      │
+ │ stg_covid_cases      |
+ |  stg_census          │
  └─────┬────────────────┘
        │ dbt ref
        ▼
  ┌──────────────────────┐
  │ Mart Schema (mart)   │
- │ Fact & Dimensions    │
+ │ Fact & Dimensions    |
+ |                      |
  └──────────────────────┘
 
 Airflow orchestrates ingestion and triggers dbt runs inside a dedicated dbt container.
@@ -61,14 +65,25 @@ Airflow orchestrates ingestion and triggers dbt runs inside a dedicated dbt cont
 covid_etl_project/
 │
 ├── dags/                     # Airflow DAGs
-│   └── covid_etl_dag.py
+│   └── combined_etl_dag.py
+|   └──tasks
+|   │    └── census_tasks.py
+|   │    └── covid_tasks.py
 │
 ├── dbt/
 │   └── covid_project/
 │       ├── models/
 │       │   ├── staging/
 │       │   │   └── stg_covid_cases.sql
-│       │   └── marts/         # Fact & dimension models (Phase 2)
+│       │   │   └── stg_census.sql
+│       │   └── marts/         # Fact & dimension models
+│       │   │   └── dimensions
+│       │   │   |   └── dim_date.sql
+│       │   │   |   └── dim_state.sql
+│       │   │   └── facts
+│       │   │   |   └── fct_covid_daily_metrics.sql
+│       │   ├── staging/
+│       │   │   └── src_covid.sql
 │       ├── tests/
 │       ├── macros/
 │       ├── dbt_project.yml
@@ -84,16 +99,11 @@ covid_etl_project/
 
 The Airflow DAG orchestrates three main steps:
 
-1. **Data ingestion** into PostgreSQL (raw schema)
-2. **Data validation / checks**
-3. **dbt transformations** via `DockerOperator`
+1. **Data ingestion of Covid data** into PostgreSQL (raw schema)
+2. **Data ingestion of Census data** into PostgreSQL (raw schema)
+3. **dbt transformations** 
 
-The dbt transformations are executed in a **dedicated dbt container**, not inside the Airflow container. This ensures:
-
-* Clear separation of concerns
-* Independent dependency management
-* Production-aligned architecture
-
+The dbt transformations are executed inside the Airflow container. 
 ---
 
 ## 6. dbt Project Design
@@ -214,12 +224,6 @@ Key design decisions:
 * dbt project initialized **inside the container** to avoid permission issues
 * Volumes are mounted so changes are reflected immediately
 
-This ensures:
-
-* No local OS permission conflicts
-* Smooth collaboration via Git
-* Reproducible environments
-
 ---
 
 ## 10. How to Run the Project
@@ -247,19 +251,7 @@ Trigger the DAG from Airflow to execute the full pipeline.
 
 ---
 
-## 12. Next Steps
-
-Planned improvements:
-
-* Complete star schema (dimensions + facts)
-* dbt snapshots (SCD Type 2)
-* Documentation site (`dbt docs generate`)
-* Data freshness tests
-* Production scheduling & monitoring
-
----
-
-## 13. Key Learning Outcomes
+## 12. Key Learning Outcomes
 
 This project demonstrates:
 

@@ -32,3 +32,23 @@ sources:
             description: "The number of deaths due to COVID-19."
             tests:
               - not_null
+      - name: census_data
+        description: "Raw Census data for demographic information."
+        columns:
+          - name: state_fips
+            description: "The FIPS code for the state."
+            tests:
+              - not_null
+              - unique
+          - name: state_name
+            description: "The name of the state."
+            tests:
+              - not_null
+          - name: total_population
+            description: "The total population of the state."
+            tests:
+              - not_null
+          - name: median_age
+            description: "The median age of the state's population."
+            tests:
+              - not_null

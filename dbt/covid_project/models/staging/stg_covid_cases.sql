@@ -6,7 +6,7 @@
 
 SELECT 
     date::date AS case_date,
-    states AS state_code,
+    lpad(states::text, 2, '0') AS state_code,
     positive AS positive_cases,
     negative AS negative_cases,
     hospitalizedCurrently AS currently_hospitalized,
